@@ -1,0 +1,30 @@
+# render.yaml - Render deployment configuration
+services:
+  - type: web
+    name: whatsapp-daily-bot
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WHATSAPP_GROUP_ID
+        fromSecret: WHATSAPP_GROUP_ID
+      - key: TIMEZONE
+        value: Asia/Kolkata
+      - key: LEETCODE_API_URL
+        value: http://localhost:3000/daily
+      - key: GFG_API_URL
+        value: https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/
+      - key: API_TIMEOUT
+        value: "30000"
+      - key: SCHEDULE_CRON
+        value: "0 6 * * *"
+      - key: SCHEDULE_TIMEZONE
+        value: Asia/Kolkata
+      - key: CONNECTION_DELAY
+        value: "30000"
+      - key: SKIP_IMMEDIATE_EXECUTION
+        value: "false"
