@@ -1,4 +1,9 @@
 node_modules/
 .env
-# auth_info_baileys
+# auth_info_baileys - will be created fresh on deployment
+auth_info_baileys/
+auth_info_baileys.zip
+auth_info_baileys_backup.zip_modules/
+.env
+auth_info_baileys/
 auth_info_baileys.zip

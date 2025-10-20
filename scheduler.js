@@ -28,16 +28,37 @@ class DailyScheduler {
       console.log('✅ Socket started successfully');
 
       // Wait for connection with longer timeout for QR code scanning
-      console.log('⏳ Waiting for WhatsApp connection (scan QR code if displayed)...');
-      await delay(parseInt(process.env.CONNECTION_DELAY) || 30000); // Increased timeout for QR scanning
+      console.log('⏳ Waiting for WhatsApp connection...');
+      console.log('📱 If this is first deployment, scan the QR code in the logs above');
+      
+      // Extended timeout for fresh authentication
+      const maxWaitTime = 90000; // 90 seconds for QR scanning
+      const checkInterval = 2000; // Check every 2 seconds
+      let waitTime = 0;
+      
+      while (!require('./sendMessage').isSocketConnected() && waitTime < maxWaitTime) {
+        await delay(checkInterval);
+        waitTime += checkInterval;
+        
+        if (waitTime % 20000 === 0) { // Log every 20 seconds
+          console.log(`⏳ Still waiting for WhatsApp connection... (${Math.floor(waitTime/1000)}s elapsed)`);
+        }
+      }
+
+      if (!require('./sendMessage').isSocketConnected()) {
+        throw new Error('Connection timeout: Could not establish WhatsApp connection within 90 seconds');
+      }
 
       // Send test message to verify connection is working
       console.log('🧪 Sending test message to verify connection...');
-      const testMessage = "🤖 WhatsApp Bot initialized successfully! \n✅ Connection is working.\n⏰ Daily coding problems will be sent at 6:00 AM IST.";
+      const testMessage = "🤖 WhatsApp Bot deployed successfully on Render! \n✅ Fresh authentication completed.\n⏰ Daily coding problems will be sent at 6:00 AM IST.";
+      
+      const { sendGroupMessage } = require('./sendMessage');
       const success = await sendGroupMessage(testMessage);
       
       if (success) {
         console.log('✅ Test message sent successfully - WhatsApp bot is ready!');
+        console.log('💾 Authentication session saved - no more QR codes needed');
         this.isInitialized = true;
       } else {
         console.log('⚠️ Test message failed, but connection may still work');
@@ -46,6 +67,7 @@ class DailyScheduler {
 
     } catch (error) {
       console.error('💥 Error initializing WhatsApp:', error.message);
+      console.log('🔄 Will retry initialization on next restart...');
       throw error; // Re-throw to let the caller handle it
     }
   }

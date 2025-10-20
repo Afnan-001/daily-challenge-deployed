@@ -17,18 +17,12 @@ const path = require("path");
 const fs = require("fs");
 const AdmZip = require("adm-zip");
 
-// 🔹 Ensure auth_info_baileys exists by extracting from zip if needed
+// 🔹 Ensure auth_info_baileys directory exists for fresh authentication
 const authPath = path.join(__dirname, "auth_info_baileys");
 if (!fs.existsSync(authPath)) {
-  const zipPath = path.join(__dirname, "auth_info_baileys.zip");
-  if (fs.existsSync(zipPath)) {
-    console.log("📂 Extracting auth_info_baileys.zip...");
-    const zip = new AdmZip(zipPath);
-    zip.extractAllTo(authPath, true);
-    console.log("✅ auth_info_baileys extracted successfully");
-  } else {
-    console.error("❌ auth_info_baileys.zip not found! Upload it as a Secret File in Render.");
-  }
+  console.log("📁 Creating fresh auth directory for WhatsApp authentication...");
+  fs.mkdirSync(authPath, { recursive: true });
+  console.log("✅ Auth directory created - ready for QR authentication");
 }
 
 
@@ -38,7 +32,7 @@ async function startSocket() {
 
     sock = makeWASocket({
       auth: state,
-      logger: P({ level: 'error' }),
+      logger: P({ level: 'silent' }), // Reduced logging for production
       browser: Browsers.ubuntu('Chrome'), // Changed to Ubuntu
       markOnlineOnConnect: false, // To avoid stopping phone notifications
     })
@@ -49,22 +43,34 @@ async function startSocket() {
       const { connection, lastDisconnect, qr } = update
       
       if (qr) {
+        console.log('📱 QR Code for WhatsApp Authentication:')
         console.log(await QRCode.toString(qr, { type: 'terminal', small: true }))
-        console.log('Scan the QR code above with WhatsApp')
+        console.log('🔍 Scan the QR code above with your WhatsApp mobile app')
+        console.log('⏰ You have 60 seconds to scan the code...')
       }
 
       if (connection === 'open') {
         isConnected = true
-        console.log('✅ Connected to WhatsApp!')
+        console.log('✅ Successfully connected to WhatsApp!')
+        console.log('💾 Session will be saved automatically for future use')
       } else if (connection === 'close') {
         isConnected = false
         const reason = (lastDisconnect?.error)?.output?.statusCode
         
         if (reason === DisconnectReason.loggedOut) {
-          console.error('❌ Logged out. Delete auth_info_baileys and re-scan QR.')
+          console.error('❌ WhatsApp session expired. Will create new QR code on next restart.')
+          console.log('🔄 Delete auth_info_baileys folder if you want to start fresh')
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log('🔄 Connection lost, reconnecting in 5s...')
+          await delay(5000)
+          startSocket()
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log('📡 Network connection lost, reconnecting in 10s...')
+          await delay(10000)
+          startSocket()
         } else {
-          console.log('🔄 Connection closed, reconnecting in 3s...')
-          await delay(3000)
+          console.log(`🔄 Connection closed (reason: ${reason}), reconnecting in 5s...`)
+          await delay(5000)
           startSocket()
         }
       }
