@@ -1,8 +1,8 @@
 // scheduler.js
 require('dotenv').config();
 const cron = require('node-cron');
-const { startSocket } = require('./main');
-const { sendDailyProblem, sendGroupMessage } = require('./sendMessage');
+const { startSocket, isSocketConnected } = require('./main');
+const { sendGroupMessage } = require('./sendMessage');
 const { delay } = require('@whiskeysockets/baileys');
 
 class DailyScheduler {
@@ -36,7 +36,7 @@ class DailyScheduler {
       const checkInterval = 2000; // Check every 2 seconds
       let waitTime = 0;
       
-      while (!require('./sendMessage').isSocketConnected() && waitTime < maxWaitTime) {
+      while (!isSocketConnected() && waitTime < maxWaitTime) {
         await delay(checkInterval);
         waitTime += checkInterval;
         
@@ -45,7 +45,7 @@ class DailyScheduler {
         }
       }
 
-      if (!require('./sendMessage').isSocketConnected()) {
+      if (!isSocketConnected()) {
         throw new Error('Connection timeout: Could not establish WhatsApp connection within 90 seconds');
       }
 
@@ -53,7 +53,6 @@ class DailyScheduler {
       console.log('🧪 Sending test message to verify connection...');
       const testMessage = "🤖 WhatsApp Bot deployed successfully on Render! \n✅ Fresh authentication completed.\n⏰ Daily coding problems will be sent at 6:00 AM IST.";
       
-      const { sendGroupMessage } = require('./sendMessage');
       const success = await sendGroupMessage(testMessage);
       
       if (success) {
@@ -109,6 +108,7 @@ class DailyScheduler {
       }
 
       // Send daily problem
+      const { sendDailyProblem } = require('./sendMessage');
       const success = await sendDailyProblem();
       
       if (success) {
